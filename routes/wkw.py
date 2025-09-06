@@ -83,19 +83,49 @@ def apply_move(grid, direction):
     return after, moved_any
 
 # ---- EXACT endpoint the UI calls ----
+# @app.post("/2048")
+# def play_2048():
+#     data = request.get_json(force=True)
+#     grid = data.get("grid")
+#     merge_dir = str(data.get("mergeDirection", "")).upper()
+
+#     if not isinstance(grid, list) or len(grid) != 4 or any(len(r)!=4 for r in grid):
+#         return jsonify({"error": "grid must be 4x4"}), 400
+#     if merge_dir not in {"LEFT","RIGHT","UP","DOWN"}:
+#         return jsonify({"error": "mergeDirection must be LEFT|RIGHT|UP|DOWN"}), 400
+
+#     new_grid, moved = apply_move(grid, merge_dir)
+#     if moved:
+#         add_random_tile(new_grid)
+
+#     return jsonify({"grid": new_grid})
+
+
+
+
 @app.post("/2048")
 def play_2048():
     data = request.get_json(force=True)
     grid = data.get("grid")
     merge_dir = str(data.get("mergeDirection", "")).upper()
 
-    if not isinstance(grid, list) or len(grid) != 4 or any(len(r)!=4 for r in grid):
-        return jsonify({"error": "grid must be 4x4"}), 400
-    if merge_dir not in {"LEFT","RIGHT","UP","DOWN"}:
-        return jsonify({"error": "mergeDirection must be LEFT|RIGHT|UP|DOWN"}), 400
-
     new_grid, moved = apply_move(grid, merge_dir)
     if moved:
         add_random_tile(new_grid)
 
-    return jsonify({"grid": new_grid})
+    # Check if game is over
+    over = not any(apply_move(new_grid, d)[1] for d in ["UP","DOWN","LEFT","RIGHT"])
+    won = any(cell == 2048 for row in new_grid for cell in row if cell)
+
+    end_status = None
+    if won:
+        end_status = "win"
+    elif over:
+        end_status = "lose"
+
+    return jsonify({
+        "nextGrid": new_grid,   # <- UI looks for this
+        "endGame": end_status   # <- UI looks for this
+    })
+
+
