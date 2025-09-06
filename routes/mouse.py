@@ -15,8 +15,6 @@ from collections import deque
 from enum import Enum
 import copy
 
-
-
 # Direction constants
 class Direction(Enum):
     NORTH = 0
@@ -123,22 +121,26 @@ class MicroMouseSolver:
         return moves
     
     def wall_follower_strategy(self, sensor_data):
-        """Simple wall following strategy - left hand rule"""
+        """Enhanced wall following strategy with proper movement tokens"""
         available_moves = self.get_available_moves(sensor_data)
         
+        # If completely trapped, turn around carefully
         if not available_moves:
-            # No moves available - turn around
-            return ["R", "R", "R", "R"]  # 180 degree turn
+            return ["R", "R"]  # Turn 90 degrees right, then reassess
         
-        # Priority: Left > Front > Right > Back
+        # Left-hand rule priority: Left > Front > Right
         if 'LEFT' in available_moves:
-            return ["L", "F2", "F1", "BB"]  # Turn left and move forward
+            # Turn left and move forward conservatively
+            return ["L", "F2", "BB"]  # Turn left, accelerate briefly, brake
         elif 'FRONT' in available_moves:
-            return ["F2", "F2", "BB"]  # Go straight
+            # Move straight ahead
+            return ["F2", "F1", "BB"]  # Accelerate, maintain, brake
         elif 'RIGHT' in available_moves:
-            return ["R", "F2", "F1", "BB"]  # Turn right and move forward
+            # Turn right and move forward
+            return ["R", "F2", "BB"]  # Turn right, accelerate briefly, brake
         else:
-            return ["R", "R", "R", "R"]  # Turn around
+            # Fallback: just turn right to explore
+            return ["R"]
     
     def get_neighbors(self, pos):
         """Get valid neighboring cells based on sensor data"""
