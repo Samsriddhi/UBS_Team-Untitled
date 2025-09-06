@@ -13,6 +13,8 @@ numpy
 requests
 scipy
 python-dotenv
+flask-cors
+
 
 
 
