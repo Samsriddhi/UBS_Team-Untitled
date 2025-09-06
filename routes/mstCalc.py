@@ -31,6 +31,12 @@ from PIL import Image
 import json
 from flask import request, jsonify
 
+import logging
+from flask import request, jsonify
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+
 
 class UnionFind:
     """Union-Find data structure for Kruskal's algorithm"""
@@ -392,6 +398,8 @@ def mst_calculation():
     try:
         # Parse JSON request
         data = request.get_json()
+        # Log the raw payload
+        logger.info(f"Received payload: {data}")
         
         if not data or not isinstance(data, list):
             return jsonify({"error": "Invalid input format"}), 400
