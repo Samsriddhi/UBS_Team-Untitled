@@ -68,3 +68,8 @@ def payload_homework():
 @app.get("/payload_malicious")
 def payload_malicious():
     return _serve_payload("payload_malicious_mini")
+
+
+@app.get("/payload_sqlinject")
+def payload_sqlinject():
+    return _serve_payload("payload_sqlinject")
