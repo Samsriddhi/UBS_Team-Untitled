@@ -285,6 +285,7 @@ solver = MicroMouseSolver()
 def micro_mouse():
     try:
         data = request.get_json()
+        logger.info("request: %s", payload)
         
         # Extract data from request
         sensor_data = data.get('sensor_data', [0, 0, 0, 0, 0])
