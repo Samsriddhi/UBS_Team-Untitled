@@ -2,6 +2,24 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import random
+import os
+import re
+from typing import List, Tuple
+import logging
+from flask import request, jsonify
+from routes import app
+from flask import Flask, request, jsonify, abort
+
+
+logger = logging.getLogger(__name__)
+
+# --- Config / logging ---
+logging.basicConfig(level=logging.INFO)
+
+
+from flask import Flask, request, jsonify
+import re
+import logging
 
     # if you already have this, don't duplicate
 CORS(app)                     # allow the UI origin
