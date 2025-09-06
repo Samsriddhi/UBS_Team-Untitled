@@ -9,6 +9,12 @@ from routes import app   # reuse the same Flask app instance
 
 logger = logging.getLogger(__name__)
 
+from flask import Flask, request, jsonify
+import numpy as np
+from collections import deque
+from enum import Enum
+import copy
+
 # Direction constants
 class Direction(Enum):
     NORTH = 0
@@ -19,7 +25,6 @@ class Direction(Enum):
     SOUTHWEST = 5
     WEST = 6
     NORTHWEST = 7
-
 
 class MicroMouseSolver:
     def __init__(self):
@@ -40,12 +45,8 @@ class MicroMouseSolver:
         self.flood_distances = np.full((self.maze_size, self.maze_size), float('inf'))
         self.initialize_flood_distances()
         
-        # DFS variables
-        self.dfs_stack = []
-        self.dfs_path = []
-        self.exploration_complete = False
-        self.path_to_goal = []
-    
+        self.last_sensor_data = [0, 0, 0, 0, 0]  # Store last sensor reading
+        
     def initialize_flood_distances(self):
         """Initialize flood distances with goal at center"""
         # Set goal cells to distance 0
@@ -121,16 +122,18 @@ class MicroMouseSolver:
         self.maze[position] = 2  # Mark current cell as open
     
     def get_neighbors(self, pos):
-        """Get valid neighboring cells"""
+        """Get valid neighboring cells based on sensor data"""
         row, col = pos
         neighbors = []
+        
+        # For now, assume we can move in any direction not blocked by walls
+        # In a real implementation, you'd use the actual maze state
         directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]  # N, E, S, W
         
         for dr, dc in directions:
             new_row, new_col = row + dr, col + dc
             if (0 <= new_row < self.maze_size and 
-                0 <= new_col < self.maze_size and 
-                self.maze[new_row, new_col] != 1):  # Not a wall
+                0 <= new_col < self.maze_size):
                 neighbors.append((new_row, new_col))
         
         return neighbors
@@ -281,11 +284,13 @@ class MicroMouseSolver:
 solver = MicroMouseSolver()
 
 
+    
 @app.route('/micro-mouse', methods=['POST'])
 def micro_mouse():
     try:
         data = request.get_json()
-        logger.info(f"Received payload: {data}")        
+        logger.info(f"Received payload: {data}")   
+        
         # Extract data from request
         sensor_data = data.get('sensor_data', [0, 0, 0, 0, 0])
         total_time_ms = data.get('total_time_ms', 0)
@@ -324,14 +329,13 @@ def micro_mouse():
             "instructions": instructions,
             "end": False
         })
-    
+        
     except Exception as e:
         print(f"Error in micro_mouse endpoint: {e}")
         return jsonify({
             "instructions": ["BB"],
             "end": True
         }), 500
-
 
 @app.route('/micro-mouse/status', methods=['GET'])
 def get_status():
@@ -344,14 +348,12 @@ def get_status():
         "visited_cells": int(np.sum(solver.visited))
     })
 
-
 @app.route('/micro-mouse/reset', methods=['POST'])
 def reset_solver():
     """Reset the solver for a new game"""
     global solver
     solver = MicroMouseSolver()
     return jsonify({"status": "reset"})
-
 
 @app.route('/micro-mouse/algorithm', methods=['POST'])
 def set_algorithm():
@@ -364,3 +366,14 @@ def set_algorithm():
         return jsonify({"algorithm": algorithm})
     else:
         return jsonify({"error": "Invalid algorithm"}), 400
+
+
+
+
+
+
+
+
+
+
+
