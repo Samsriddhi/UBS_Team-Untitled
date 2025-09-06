@@ -8,6 +8,7 @@ from routes import app
 from flask import Flask, request, jsonify, abort
 from openai import OpenAI
 from dotenv import load_dotenv
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -848,6 +849,12 @@ def detect_chinese_type(s):
 def duolingo_sort():
     try:
         data = request.get_json()
+        # --- log the raw body + parsed fields for each test case ---
+        raw_body = request.get_data(cache=False, as_text=True)
+        challenge = (data or {}).get('challenge')  # Duolingo payload includes this
+        part = (data or {}).get('part')
+        app.logger.info("📝 /duolingo-sort request | challenge=%s | part=%s | body=%s",
+                        challenge, part, raw_body)
         
         # Validate input structure
         if not data or 'part' not in data or 'challengeInput' not in data:
