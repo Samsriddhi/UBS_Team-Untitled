@@ -390,20 +390,33 @@ class NumberParser:
         app.logger.warning(f"Unknown number format: '{original_s}'")
         return 0, 'unknown'
 
+# def get_language_priority(lang):
+#     """Get sorting priority for languages when values are equal"""
+#     priority_map = {
+#         'roman': 0,
+#         'english': 1, 
+#         'chinese_traditional': 2,
+#         'chinese_simplified': 3,
+#         'german': 4,
+#         'arabic': 5,
+#         'french': 6,
+#         'spanish': 7,
+#         'unknown': 8
+#     }
+#     return priority_map.get(lang, 9)
+
 def get_language_priority(lang):
     """Get sorting priority for languages when values are equal"""
     priority_map = {
         'roman': 0,
-        'english': 1, 
+        'english': 1,
         'chinese_traditional': 2,
         'chinese_simplified': 3,
         'german': 4,
-        'arabic': 5,
-        'french': 6,
-        'spanish': 7,
-        'unknown': 8
+        'arabic': 5
     }
-    return priority_map.get(lang, 9)
+    # Default to lowest priority if unknown
+    return priority_map.get(lang, 6)
 
 
 
