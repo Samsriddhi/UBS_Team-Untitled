@@ -14,7 +14,6 @@ import numpy as np
 from collections import deque
 from enum import Enum
 import copy
-
 # Direction constants
 class Direction(Enum):
     NORTH = 0
@@ -46,6 +45,12 @@ class MicroMouseSolver:
         self.initialize_flood_distances()
         
         self.last_sensor_data = [0, 0, 0, 0, 0]  # Store last sensor reading
+        
+        # DFS variables (needed for status endpoint)
+        self.dfs_stack = []
+        self.dfs_path = []
+        self.exploration_complete = False
+        self.path_to_goal = []
         
     def initialize_flood_distances(self):
         """Initialize flood distances with goal at center"""
@@ -278,8 +283,6 @@ class MicroMouseSolver:
             return self.dfs_explore()
         else:
             return self.floodfill_solve()
-
-
 # Global solver instance
 solver = MicroMouseSolver()
 
