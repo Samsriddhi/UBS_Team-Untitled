@@ -86,7 +86,7 @@ def add_random_tile(grid):
     if not cells:
         return
     r, c = random.choice(cells)
-    grid[r][c] = 2 if random.random() < 0.9 else 4
+    grid[r][c] = 2 
 
 def has_2048(grid):
     return any(cell == 2048 for row in grid for cell in row if cell)
@@ -102,8 +102,8 @@ def can_move(grid):
                 return True
     return False
 
+
 @app.route("/2048", methods=["POST", "OPTIONS"])
-@app.route("/2048/", methods=["POST", "OPTIONS"])
 def play_2048():
     # Handle preflight cleanly (some clients send it)
     if request.method == "OPTIONS":
