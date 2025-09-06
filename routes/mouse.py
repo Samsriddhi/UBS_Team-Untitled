@@ -15,6 +15,8 @@ from collections import deque
 from enum import Enum
 import copy
 # Direction constants
+
+# Direction constants
 class Direction(Enum):
     NORTH = 0
     NORTHEAST = 1
@@ -278,16 +280,20 @@ class MicroMouseSolver:
         if goal_reached:
             return ["BB"]
         
-        # Choose algorithm
-        if self.algorithm == "dfs":
-            return self.dfs_explore()
-        else:
-            return self.floodfill_solve()
+        # If we're stuck (no available moves), try to turn around
+        available_moves = self.get_available_moves(sensor_data)
+        if not available_moves:
+            return ["R", "R"]  # Turn right twice (90 degrees)
+        
+        # Use wall following strategy for exploration
+        return self.wall_follower_strategy(sensor_data)
+
+
 # Global solver instance
 solver = MicroMouseSolver()
 
 
-    
+
 @app.route('/micro-mouse', methods=['POST'])
 def micro_mouse():
     try:
@@ -369,9 +375,6 @@ def set_algorithm():
         return jsonify({"algorithm": algorithm})
     else:
         return jsonify({"error": "Invalid algorithm"}), 400
-
-
-
 
 
 
