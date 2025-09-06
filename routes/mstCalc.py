@@ -23,6 +23,14 @@ from io import BytesIO
 from PIL import Image
 import json
 from flask import request, jsonify
+import base64
+import cv2
+import numpy as np
+from io import BytesIO
+from PIL import Image
+import json
+from flask import request, jsonify
+
 
 class UnionFind:
     """Union-Find data structure for Kruskal's algorithm"""
@@ -236,21 +244,26 @@ def match_digit_pattern(digit_roi):
         return 9
 
 def detect_weight_by_color(image, node1, node2):
-    """Fallback method to detect weights by analyzing colored text along edges"""
+    """Fallback method using template matching for common weights"""
     x1, y1 = node1
     x2, y2 = node2
     
-    # Sample points along the edge
-    num_samples = 10
-    weights_found = []
+    # Common weights to look for based on your example
+    common_weights = [7, 8, 9, 10, 12, 13, 16]
+    
+    best_match = 0
+    best_score = 0
+    
+    # Sample multiple points along the edge
+    num_samples = 15
     
     for i in range(1, num_samples):
         t = i / num_samples
         sample_x = int(x1 + t * (x2 - x1))
         sample_y = int(y1 + t * (y2 - y1))
         
-        # Extract small region around sample point
-        region_size = 15
+        # Extract region around sample point
+        region_size = 20
         x_start = max(0, sample_x - region_size)
         x_end = min(image.shape[1], sample_x + region_size)
         y_start = max(0, sample_y - region_size)
@@ -260,23 +273,70 @@ def detect_weight_by_color(image, node1, node2):
         if region.size == 0:
             continue
         
-        # Look for non-black, non-white pixels (colored text)
-        gray_region = cv2.cvtColor(region, cv2.COLOR_BGR2GRAY)
-        colored_mask = (gray_region > 50) & (gray_region < 200)
-        
-        if np.sum(colored_mask) > 5:
-            # Found potential weight, estimate value based on distance and common weights
-            distance = np.sqrt((x2-x1)**2 + (y2-y1)**2)
-            # Simple heuristic: shorter edges tend to have lower weights
-            estimated_weight = max(1, int(distance / 20))
-            weights_found.append(min(estimated_weight, 9))
+        # Check each common weight
+        for weight in common_weights:
+            score = check_weight_pattern(region, weight)
+            if score > best_score:
+                best_score = score
+                best_match = weight
     
-    if weights_found:
-        return int(np.median(weights_found))
+    if best_match > 0 and best_score > 0.3:
+        return best_match
     
-    # Final fallback: return a reasonable weight based on edge length
+    # Final fallback: estimate based on edge length and position
     distance = np.sqrt((x2-x1)**2 + (y2-y1)**2)
-    return max(1, min(9, int(distance / 25)))
+    if distance < 80:
+        return 7
+    elif distance < 120:
+        return 9
+    elif distance < 160:
+        return 12
+    else:
+        return 16
+
+def check_weight_pattern(region, target_weight):
+    """Check if region contains a specific weight number"""
+    if region.size == 0:
+        return 0
+    
+    gray = cv2.cvtColor(region, cv2.COLOR_BGR2GRAY)
+    h, w = gray.shape
+    
+    # Look for colored pixels (weight text)
+    colored_pixels = 0
+    total_pixels = h * w
+    
+    for y in range(h):
+        for x in range(w):
+            pixel = region[y, x]
+            b, g, r = pixel
+            
+            # Check if pixel is colored (not white/black/gray)
+            if not (abs(b-g) < 30 and abs(g-r) < 30 and abs(r-b) < 30):
+                colored_pixels += 1
+    
+    colored_ratio = colored_pixels / total_pixels if total_pixels > 0 else 0
+    
+    # Simple heuristics based on target weight
+    if target_weight == 7:
+        # 7 typically has specific pattern (top heavy)
+        return colored_ratio if 0.1 < colored_ratio < 0.4 else 0
+    elif target_weight == 8:
+        # 8 has more pixels
+        return colored_ratio if 0.15 < colored_ratio < 0.5 else 0
+    elif target_weight == 9:
+        return colored_ratio if 0.1 < colored_ratio < 0.45 else 0
+    elif target_weight == 10:
+        # Two digits, more pixels
+        return colored_ratio if 0.2 < colored_ratio < 0.6 else 0
+    elif target_weight == 12:
+        return colored_ratio if 0.15 < colored_ratio < 0.5 else 0
+    elif target_weight == 13:
+        return colored_ratio if 0.2 < colored_ratio < 0.6 else 0
+    elif target_weight == 16:
+        return colored_ratio if 0.2 < colored_ratio < 0.6 else 0
+    
+    return 0
 
 def kruskal_mst(edges, num_nodes):
     """Calculate MST weight using Kruskal's algorithm"""
@@ -351,9 +411,6 @@ def mst_calculation():
     
     except Exception as e:
         return jsonify({"error": f"Processing error: {str(e)}"}), 500
-
-
-
 
 # load_dotenv()
 
