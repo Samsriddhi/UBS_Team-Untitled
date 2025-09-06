@@ -21,116 +21,126 @@ from flask import Flask, request, jsonify
 import re
 import logging
 
-    # if you already have this, don't duplicate
-CORS(app)                     # allow the UI origin
-
+app.url_map.strict_slashes = False   # /2048 and /2048/ behave the same
+CORS(app)
 
 N = 4
 
-# ----- GFG Helper functions -----
-def add_new(grid):
-    r, c = random.choice([(i, j) for i in range(N) for j in range(N) if grid[i][j] is None])
+def rotate_clockwise(grid):
+    return [[grid[N-1-r][c] for r in range(N)] for c in range(N)]
+
+def rotate_counterclockwise(grid):
+    return [[grid[r][N-1-c] for r in range(N)] for c in range(N-1, -1, -1)]
+
+def slide_left_row(row):
+    nums = [x for x in row if x is not None]
+    out, i, score_inc = [], 0, 0
+    while i < len(nums):
+        if i + 1 < len(nums) and nums[i] == nums[i + 1]:
+            merged = nums[i] * 2
+            out.append(merged)
+            score_inc += merged
+            i += 2
+        else:
+            out.append(nums[i])
+            i += 1
+    while len(out) < N:
+        out.append(None)
+    return out, score_inc
+
+def move_grid(grid, direction):
+    g = [row[:] for row in grid]
+    # normalize to LEFT
+    if direction == "UP":
+        g = rotate_counterclockwise(g)
+    elif direction == "DOWN":
+        g = rotate_clockwise(rotate_clockwise(rotate_clockwise(g)))
+    elif direction == "RIGHT":
+        g = rotate_clockwise(rotate_clockwise(g))
+
+    moved = False
+    score_gain = 0
+    new_g = []
+    for row in g:
+        new_row, inc = slide_left_row(row)
+        if new_row != row:
+            moved = True
+        score_gain += inc
+        new_g.append(new_row)
+
+    # rotate back
+    if direction == "UP":
+        new_g = rotate_clockwise(new_g)
+    elif direction == "DOWN":
+        new_g = rotate_counterclockwise(rotate_counterclockwise(rotate_counterclockwise(new_g)))
+    elif direction == "RIGHT":
+        new_g = rotate_clockwise(rotate_clockwise(new_g))
+
+    return new_g, moved, score_gain
+
+def empty_cells(grid):
+    return [(r, c) for r in range(N) for c in range(N) if grid[r][c] is None]
+
+def add_random_tile(grid):
+    cells = empty_cells(grid)
+    if not cells:
+        return
+    r, c = random.choice(cells)
     grid[r][c] = 2 if random.random() < 0.9 else 4
-    return grid
 
-def compress(grid):
-    new_grid = [[None]*N for _ in range(N)]
-    changed = False
-    for i in range(N):
-        pos = 0
-        for j in range(N):
-            if grid[i][j] is not None:
-                new_grid[i][pos] = grid[i][j]
-                if j != pos:
-                    changed = True
-                pos += 1
-    return new_grid, changed
+def has_2048(grid):
+    return any(cell == 2048 for row in grid for cell in row if cell)
 
-def merge(grid):
-    changed = False
-    for i in range(N):
-        for j in range(N-1):
-            if grid[i][j] is not None and grid[i][j] == grid[i][j+1]:
-                grid[i][j] *= 2
-                grid[i][j+1] = None
-                changed = True
-    return grid, changed
-
-def reverse(grid):
-    return [row[::-1] for row in grid]
-
-def transpose(grid):
-    return [[grid[j][i] for j in range(N)] for i in range(N)]
-
-# ----- Move operations -----
-def move_left(grid):
-    grid, c1 = compress(grid)
-    grid, c2 = merge(grid)
-    grid, _ = compress(grid)
-    return grid, c1 or c2
-
-def move_right(grid):
-    grid = reverse(grid)
-    grid, changed = move_left(grid)
-    grid = reverse(grid)
-    return grid, changed
-
-def move_up(grid):
-    grid = transpose(grid)
-    grid, changed = move_left(grid)
-    grid = transpose(grid)
-    return grid, changed
-
-def move_down(grid):
-    grid = transpose(grid)
-    grid, changed = move_right(grid)
-    grid = transpose(grid)
-    return grid, changed
-
-# ----- Game state -----
-def get_end_status(grid):
-    # win?
-    if any(cell == 2048 for row in grid for cell in row if cell):
-        return "win"
-    # any empty?
-    if any(cell is None for row in grid for cell in row):
-        return None
-    # any moves possible?
+def can_move(grid):
+    if empty_cells(grid):
+        return True
     for r in range(N):
-        for c in range(N-1):
-            if grid[r][c] == grid[r][c+1]:
-                return None
-    for r in range(N-1):
         for c in range(N):
-            if grid[r][c] == grid[r+1][c]:
-                return None
-    return "lose"
+            if r + 1 < N and grid[r][c] == grid[r + 1][c]:
+                return True
+            if c + 1 < N and grid[r][c] == grid[r][c + 1]:
+                return True
+    return False
 
-# ----- Flask endpoint -----
-@app.post("/2048")
+@app.route("/2048", methods=["POST", "OPTIONS"])
+@app.route("/2048/", methods=["POST", "OPTIONS"])
 def play_2048():
-    data = request.get_json(force=True)
+    # Handle preflight cleanly (some clients send it)
+    if request.method == "OPTIONS":
+        return ("", 204)
+
+    # Be tolerant about JSON (in case Content-Type is missing)
+    data = request.get_json(silent=True)
+    if data is None:
+        try:
+            data = json.loads(request.data.decode("utf-8") or "{}")
+        except Exception:
+            return jsonify({"error": "invalid JSON"}), 400
+
     grid = data.get("grid")
     direction = str(data.get("mergeDirection", "")).upper()
 
-    if direction == "LEFT":
-        new_grid, moved = move_left(grid)
-    elif direction == "RIGHT":
-        new_grid, moved = move_right(grid)
-    elif direction == "UP":
-        new_grid, moved = move_up(grid)
-    elif direction == "DOWN":
-        new_grid, moved = move_down(grid)
-    else:
-        return jsonify({"error": "bad direction"}), 400
+    if not (isinstance(grid, list) and len(grid) == 4 and all(isinstance(r, list) and len(r) == 4 for r in grid)):
+        return jsonify({"error": "grid must be 4x4"}), 400
+    if direction not in {"UP", "DOWN", "LEFT", "RIGHT"}:
+        return jsonify({"error": "mergeDirection must be LEFT|RIGHT|UP|DOWN"}), 400
 
+    # ensure ints or None
+    grid = [[(int(v) if v is not None else None) for v in row] for row in grid]
+
+    new_grid, moved, _ = move_grid(grid, direction)
     if moved:
-        new_grid = add_new(new_grid)
+        add_random_tile(new_grid)
 
-    end_status = get_end_status(new_grid)
+    if has_2048(new_grid):
+        end_status = "win"
+    elif not can_move(new_grid):
+        end_status = "lose"
+    else:
+        end_status = None
 
-    return jsonify({
-        "nextGrid": new_grid,
-        "endGame": end_status
-    })
+    # log to Render logs so you can see judge inputs
+    print({"in": grid, "dir": direction, "out": new_grid, "end": end_status}, file=sys.stdout, flush=True)
+
+    return jsonify({"nextGrid": new_grid, "endGame": end_status})
 
