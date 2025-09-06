@@ -1,20 +1,3 @@
-from flask import Flask, request, jsonify
-import numpy as np
-from collections import deque
-from enum import Enum
-import copy
-import logging
-from flask import request, jsonify
-from routes import app   # reuse the same Flask app instance
-
-logger = logging.getLogger(__name__)
-
-from flask import Flask, request, jsonify
-import numpy as np
-from collections import deque
-from enum import Enum
-import copy
-# Direction constants
 
 # Direction constants
 class Direction(Enum):
@@ -96,37 +79,48 @@ class MicroMouseSolver:
     def update_maze_from_sensors(self, sensor_data, position, direction):
         """Update maze based on sensor readings"""
         # sensor_data: [left_90, left_45, front, right_45, right_90]
-        # Convert direction to angle
-        angle = direction.value * 45
-        
-        sensor_angles = [-90, -45, 0, 45, 90]
-        row, col = position
-        
-        for i, sensor_reading in enumerate(sensor_data):
-            sensor_angle = (angle + sensor_angles[i]) % 360
-            
-            # Convert angle to direction vector
-            if sensor_angle == 0:    # North
-                check_pos = (row + 1, col)
-            elif sensor_angle == 90:  # East
-                check_pos = (row, col + 1)
-            elif sensor_angle == 180: # South
-                check_pos = (row - 1, col)
-            elif sensor_angle == 270: # West
-                check_pos = (row, col - 1)
-            else:
-                continue  # Skip diagonal sensors for wall detection
-            
-            if (0 <= check_pos[0] < self.maze_size and 
-                0 <= check_pos[1] < self.maze_size):
-                
-                if sensor_reading == 1:  # Wall detected
-                    self.maze[check_pos] = 1
-                elif sensor_reading == 0:  # No wall
-                    self.maze[check_pos] = 2
-        
         self.visited[position] = True
         self.maze[position] = 2  # Mark current cell as open
+        
+        # Store sensor readings for immediate use
+        self.last_sensor_data = sensor_data
+    
+    def get_available_moves(self, sensor_data):
+        """Get available moves based on current sensor data"""
+        # sensor_data: [left_90, left_45, front, right_45, right_90]
+        moves = []
+        
+        # Check front (index 2)
+        if len(sensor_data) > 2 and sensor_data[2] == 0:
+            moves.append('FRONT')
+        
+        # Check left (index 0 for 90° left)
+        if len(sensor_data) > 0 and sensor_data[0] == 0:
+            moves.append('LEFT')
+        
+        # Check right (index 4 for 90° right) 
+        if len(sensor_data) > 4 and sensor_data[4] == 0:
+            moves.append('RIGHT')
+            
+        return moves
+    
+    def wall_follower_strategy(self, sensor_data):
+        """Simple wall following strategy - left hand rule"""
+        available_moves = self.get_available_moves(sensor_data)
+        
+        if not available_moves:
+            # No moves available - turn around
+            return ["R", "R", "R", "R"]  # 180 degree turn
+        
+        # Priority: Left > Front > Right > Back
+        if 'LEFT' in available_moves:
+            return ["L", "F2", "F1", "BB"]  # Turn left and move forward
+        elif 'FRONT' in available_moves:
+            return ["F2", "F2", "BB"]  # Go straight
+        elif 'RIGHT' in available_moves:
+            return ["R", "F2", "F1", "BB"]  # Turn right and move forward
+        else:
+            return ["R", "R", "R", "R"]  # Turn around
     
     def get_neighbors(self, pos):
         """Get valid neighboring cells based on sensor data"""
@@ -293,7 +287,7 @@ class MicroMouseSolver:
 solver = MicroMouseSolver()
 
 
-
+    
 @app.route('/micro-mouse', methods=['POST'])
 def micro_mouse():
     try:
@@ -375,11 +369,3 @@ def set_algorithm():
         return jsonify({"algorithm": algorithm})
     else:
         return jsonify({"error": "Invalid algorithm"}), 400
-
-
-
-
-
-
-
-
