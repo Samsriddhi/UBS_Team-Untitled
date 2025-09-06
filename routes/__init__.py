@@ -16,7 +16,7 @@ import routes.trading_bot
 import routes.sailing_club
 import routes.wkw
 import routes.ctf
-
+import routes.mouse
 
 # --- import blueprints ---
 # from .trading_formula import trading_formula_bp
