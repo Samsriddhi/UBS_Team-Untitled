@@ -285,8 +285,7 @@ solver = MicroMouseSolver()
 def micro_mouse():
     try:
         data = request.get_json()
-        logger.info("request: %s", payload)
-        
+        logger.info(f"Received payload: {data}")        
         # Extract data from request
         sensor_data = data.get('sensor_data', [0, 0, 0, 0, 0])
         total_time_ms = data.get('total_time_ms', 0)
