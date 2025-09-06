@@ -474,26 +474,26 @@ def duolingo_sort():
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
 
-@app.route('/health', methods=['GET'])
-def health_check():
-    return jsonify({"status": "healthy", "version": "2.0"})
+# @app.route('/health', methods=['GET'])
+# def health_check():
+#     return jsonify({"status": "healthy", "version": "2.0"})
 
-@app.route('/test', methods=['POST'])
-def test_parser():
-    data = request.get_json()
-    test_numbers = data.get('numbers', [])
+# @app.route('/test', methods=['POST'])
+# def test_parser():
+#     data = request.get_json()
+#     test_numbers = data.get('numbers', [])
 
-    parser = NumberParser()
-    results = []
-    for num_str in test_numbers:
-        value, lang = parser.detect_and_parse(num_str)
-        if lang == 'chinese':
-            lang = detect_chinese_type(num_str)
-        results.append({
-            "original": num_str,
-            "value": value,
-            "language": lang,
-            "priority": get_language_priority(lang)
-        })
-    return jsonify(results)
+#     parser = NumberParser()
+#     results = []
+#     for num_str in test_numbers:
+#         value, lang = parser.detect_and_parse(num_str)
+#         if lang == 'chinese':
+#             lang = detect_chinese_type(num_str)
+#         results.append({
+#             "original": num_str,
+#             "value": value,
+#             "language": lang,
+#             "priority": get_language_priority(lang)
+#         })
+#     return jsonify(results)
 
