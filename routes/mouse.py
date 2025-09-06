@@ -20,6 +20,7 @@ class Direction(Enum):
     WEST = 6
     NORTHWEST = 7
 
+
 class MicroMouseSolver:
     def __init__(self):
         self.maze_size = 16
@@ -44,7 +45,7 @@ class MicroMouseSolver:
         self.dfs_path = []
         self.exploration_complete = False
         self.path_to_goal = []
-        
+    
     def initialize_flood_distances(self):
         """Initialize flood distances with goal at center"""
         # Set goal cells to distance 0
@@ -280,85 +281,86 @@ class MicroMouseSolver:
 solver = MicroMouseSolver()
 
 
-  
-  @app.route('/micro-mouse', methods=['POST'])
-  def micro_mouse():
-      try:
-          data = request.get_json()
-          
-          # Extract data from request
-          sensor_data = data.get('sensor_data', [0, 0, 0, 0, 0])
-          total_time_ms = data.get('total_time_ms', 0)
-          goal_reached = data.get('goal_reached', False)
-          best_time_ms = data.get('best_time_ms', None)
-          run_time_ms = data.get('run_time_ms', 0)
-          run = data.get('run', 0)
-          momentum = data.get('momentum', 0)
-          game_uuid = data.get('game_uuid', '')
-          
-          # Convert position (assuming we track it somehow - for now use run info)
-          # In a real implementation, you'd track position based on movements
-          if run == 0 and run_time_ms == 0:
-              position = (0, 0)  # Start position
-          else:
-              # For now, assume we can derive position from game state
-              position = solver.current_pos
-          
-          # Check if we should end
-          if total_time_ms > 290000:  # Near time limit
-              return jsonify({
-                  "instructions": [],
-                  "end": True
-              })
-          
-          # Switch algorithm based on run
-          if run < 3:
-              solver.algorithm = "dfs"  # Explore first
-          else:
-              solver.algorithm = "floodfill"  # Optimize later runs
-          
-          # Get movement commands
-          instructions = solver.solve(sensor_data, position, momentum, goal_reached)
-          
-          return jsonify({
-              "instructions": instructions,
-              "end": False
-          })
-          
-      except Exception as e:
-          print(f"Error in micro_mouse endpoint: {e}")
-          return jsonify({
-              "instructions": ["BB"],
-              "end": True
-          }), 500
-  
-  @app.route('/micro-mouse/status', methods=['GET'])
-  def get_status():
-      """Get current solver status"""
-      return jsonify({
-          "algorithm": solver.algorithm,
-          "position": solver.current_pos,
-          "direction": solver.current_direction.name,
-          "exploration_complete": solver.exploration_complete,
-          "visited_cells": int(np.sum(solver.visited))
-      })
-  
-  @app.route('/micro-mouse/reset', methods=['POST'])
-  def reset_solver():
-      """Reset the solver for a new game"""
-      global solver
-      solver = MicroMouseSolver()
-      return jsonify({"status": "reset"})
-  
-  @app.route('/micro-mouse/algorithm', methods=['POST'])
-  def set_algorithm():
-      """Set the solving algorithm"""
-      data = request.get_json()
-      algorithm = data.get('algorithm', 'floodfill')
-      
-      if algorithm in ['dfs', 'floodfill']:
-          solver.algorithm = algorithm
-          return jsonify({"algorithm": algorithm})
-      else:
-          return jsonify({"error": "Invalid algorithm"}), 400
+@app.route('/micro-mouse', methods=['POST'])
+def micro_mouse():
+    try:
+        data = request.get_json()
+        
+        # Extract data from request
+        sensor_data = data.get('sensor_data', [0, 0, 0, 0, 0])
+        total_time_ms = data.get('total_time_ms', 0)
+        goal_reached = data.get('goal_reached', False)
+        best_time_ms = data.get('best_time_ms', None)
+        run_time_ms = data.get('run_time_ms', 0)
+        run = data.get('run', 0)
+        momentum = data.get('momentum', 0)
+        game_uuid = data.get('game_uuid', '')
+        
+        # Convert position (assuming we track it somehow - for now use run info)
+        # In a real implementation, you'd track position based on movements
+        if run == 0 and run_time_ms == 0:
+            position = (0, 0)  # Start position
+        else:
+            # For now, assume we can derive position from game state
+            position = solver.current_pos
+        
+        # Check if we should end
+        if total_time_ms > 290000:  # Near time limit
+            return jsonify({
+                "instructions": [],
+                "end": True
+            })
+        
+        # Switch algorithm based on run
+        if run < 3:
+            solver.algorithm = "dfs"  # Explore first
+        else:
+            solver.algorithm = "floodfill"  # Optimize later runs
+        
+        # Get movement commands
+        instructions = solver.solve(sensor_data, position, momentum, goal_reached)
+        
+        return jsonify({
+            "instructions": instructions,
+            "end": False
+        })
+    
+    except Exception as e:
+        print(f"Error in micro_mouse endpoint: {e}")
+        return jsonify({
+            "instructions": ["BB"],
+            "end": True
+        }), 500
 
+
+@app.route('/micro-mouse/status', methods=['GET'])
+def get_status():
+    """Get current solver status"""
+    return jsonify({
+        "algorithm": solver.algorithm,
+        "position": solver.current_pos,
+        "direction": solver.current_direction.name,
+        "exploration_complete": solver.exploration_complete,
+        "visited_cells": int(np.sum(solver.visited))
+    })
+
+
+@app.route('/micro-mouse/reset', methods=['POST'])
+def reset_solver():
+    """Reset the solver for a new game"""
+    global solver
+    solver = MicroMouseSolver()
+    return jsonify({"status": "reset"})
+
+
+@app.route('/micro-mouse/algorithm', methods=['POST'])
+def set_algorithm():
+    """Set the solving algorithm"""
+    data = request.get_json()
+    algorithm = data.get('algorithm', 'floodfill')
+    
+    if algorithm in ['dfs', 'floodfill']:
+        solver.algorithm = algorithm
+        return jsonify({"algorithm": algorithm})
+    else:
+        return jsonify({"error": "Invalid algorithm"}), 400
