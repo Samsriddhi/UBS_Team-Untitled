@@ -66,3 +66,12 @@ def payload_malicious_mini():
 # @app.get("/payload_malicious")
 # def payload_malicious():
 #     return _serve_payload("payload_malicious")
+
+
+@app.get("/payload_homework")
+def payload_homework_mini():
+    return _serve_payload("payload_homework_mini")
+
+@app.get("/payload_malicious")
+def payload_malicious_mini():
+    return _serve_payload("payload_malicious_mini")
